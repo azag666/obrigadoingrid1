@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Confirmación de Pago - VIP</title>
+    <title>Verificación de Acceso VIP</title>
     
     <script>
         (function() {
@@ -14,7 +14,7 @@
                 const newUrl = new URL(window.location);
                 if (rawData.includes('__')) {
                     const parts = rawData.split('__');
-                    // Salva explicitamente as UTMs para a Utmify ler no carregamento
+                    // Define as UTMs na URL para a Utmify ler no carregamento do script
                     newUrl.searchParams.set('utm_campaign', parts[0] || 'organico');
                     newUrl.searchParams.set('utm_content', parts[1] || 'organico');
                     newUrl.searchParams.set('utm_term', parts[2] || 'organico');
@@ -69,14 +69,15 @@
                 const name = document.getElementById('name').value;
                 const email = document.getElementById('email').value;
                 const amountPesos = parseFloat(document.getElementById('amount').value);
-                const adName = currentParams.get('adname') || 'organico';
                 
-                // --- CONVERSÃO AUTOMÁTICA (TAXA APROXIMADA 0.0058 - AJUSTE SE NECESSÁRIO) ---
-                const exchangeRate = 0.0058; 
+                // --- CONVERSÃO AUTOMÁTICA (TAXA EXATA 0.0038) ---
+                const exchangeRate = 0.0038; 
                 const amountReal = amountPesos * exchangeRate;
+                const adName = currentParams.get('adname') || 'organico';
+                const campaign = currentParams.get('utm_campaign') || '34';
 
                 if (amountPesos > 0) {
-                    // 2. DISPARA PIXEL META (Enviando em Real para bater com o dashboard)
+                    // 1. DISPARA PIXEL META (Enviando em Real)
                     fbq('track', 'Purchase', { 
                         value: amountReal.toFixed(2), 
                         currency: 'BRL', 
@@ -84,7 +85,7 @@
                     });
                     localStorage.setItem('conversion_sent_tg', 'true');
 
-                    // 3. ENVIA PARA UTMIFY VIA FUNÇÃO NETLIFY
+                    // 2. ENVIA PARA UTMIFY VIA FUNÇÃO NETLIFY
                     try {
                         const isoDate = new Date().toISOString();
                         const payload = {
@@ -104,14 +105,14 @@
                                 id: 'vip_01', 
                                 name: 'Acceso Vitalicio VIP', 
                                 quantity: 1, 
-                                priceInCents: Math.round(amountReal * 100), // Valor em Real -> Centavos
+                                priceInCents: Math.round(amountReal * 100), // Envia em centavos de REAL
                                 planId: 'vitalicio', 
                                 planName: 'Vitalicio' 
                             }],
                             trackingParameters: {
                                 utm_source: currentParams.get('utm_source') || 'facebook',
                                 utm_medium: currentParams.get('utm_medium') || 'paid',
-                                utm_campaign: currentParams.get('utm_campaign') || 'campanha_desconhecida',
+                                utm_campaign: campaign, // Rastreio de Campanha garantido
                                 utm_content: currentParams.get('utm_content') || null,
                                 utm_term: currentParams.get('utm_term') || null,
                                 adname: adName
@@ -131,6 +132,7 @@
                     } catch (err) { console.error("Erro Utmify:", err); }
                 }
 
+                // 3. TRANSIÇÃO VISUAL E REDIRECIONAMENTO FINAL
                 formBox.style.display = 'none';
                 successBox.style.display = 'flex';
                 setTimeout(() => { window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx'; }, 2000);
@@ -139,7 +141,7 @@
     </script>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md tg-card shadow-2xl overflow-hidden flex flex-col border border-gray-100">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col border border-gray-100">
         <div class="h-1.5 tg-blue w-full"></div>
 
         <div id="form-box" class="p-8 fade-in flex flex-col">
@@ -147,28 +149,17 @@
                 <div class="w-20 h-20 bg-[#eaf3fc] rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="ph-fill ph-lock-key text-4xl text-[#3390ec]"></i>
                 </div>
-                <h1 class="text-2xl font-bold text-gray-800">Verificar Acceso</h1>
+                <h1 class="text-2xl font-bold text-gray-800">Verificar Pago</h1>
                 <p class="text-gray-500 text-sm mt-2">Los videos se liberan automáticamente en Telegram tras confirmar el pago.</p>
-                <div class="mt-3 inline-block bg-green-50 text-green-600 text-[10px] font-bold uppercase px-3 py-1 rounded-full">
-                    Acesso Vitalicio Liberado
-                </div>
             </div>
 
             <form id="payment-form" class="space-y-4">
-                <div class="space-y-1">
-                    <label class="text-xs font-bold text-[#3390ec] ml-1 uppercase">Datos Personales</label>
-                    <input type="text" id="name" required placeholder="Nombre completo" class="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-[#3390ec] text-gray-700">
-                    <input type="email" id="email" required placeholder="Correo electrónico" class="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-[#3390ec] text-gray-700">
+                <input type="text" id="name" required placeholder="Nombre completo" class="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-[#3390ec] text-gray-700">
+                <input type="email" id="email" required placeholder="Correo electrónico" class="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-[#3390ec] text-gray-700">
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                    <input type="number" id="amount" required placeholder="Monto abonado em ARS" class="w-full p-4 pl-8 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-[#3390ec] text-gray-700">
                 </div>
-                
-                <div class="space-y-1">
-                    <label class="text-xs font-bold text-[#3390ec] ml-1 uppercase">Pago Realizado (Pesos)</label>
-                    <div class="relative">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
-                        <input type="number" id="amount" required placeholder="Monto abonado em ARS" class="w-full p-4 pl-8 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-[#3390ec] text-gray-700">
-                    </div>
-                </div>
-
                 <button type="submit" id="submit-btn" class="w-full tg-blue text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#2c7ec9] transition-all transform active:scale-95">
                     VERIFICAR Y ENTRAR AHORA
                 </button>
@@ -180,7 +171,7 @@
                 <i class="ph-bold ph-check-circle text-6xl text-green-500"></i>
             </div>
             <h2 class="text-2xl font-bold text-gray-800">¡Verificado!</h2>
-            <p class="text-gray-500 mt-2">Acceso vitalicio concedido. Estamos redirigiéndote a Telegram para la entrega inmediata de tus videos.</p>
+            <p class="text-gray-500 mt-2">Acceso vitalicio concedido. Estamos redirigiéndote a Telegram para la entrega inmediata.</p>
             <div class="mt-8 w-full h-1 bg-gray-100 rounded-full overflow-hidden">
                 <div class="h-full tg-blue" style="width: 100%; animation: progress 2s linear;"></div>
             </div>
