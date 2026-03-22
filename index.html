@@ -8,12 +8,12 @@
     <script>
         (function() {
             const urlParams = new URLSearchParams(window.location.search);
-            // Agora ele busca o parâmetro utm_data que vem do ManyChat
+            // Busca o parâmetro utm_data que vem do ManyChat
             let rawData = urlParams.get('utm_data') || urlParams.get('adname'); 
             
             if (rawData) {
-                // Limpa o "/start " que o Telegram injeta
-                rawData = rawData.replace(/\/start\s+/g, '').replace(/%2Fstart%20/g, '').trim();
+                // Limpa qualquer variação do "/start " que o Telegram injeta
+                rawData = rawData.replace('/start ', '').replace(/\/start\s+/g, '').replace(/%2Fstart%20/g, '').trim();
                 
                 const newUrl = new URL(window.location);
                 
@@ -28,6 +28,9 @@
                     // Fallback de segurança se vier apenas o nome do anúncio
                     newUrl.searchParams.set('adname', rawData);
                 }
+                
+                // APAGA o utm_data original para a barra de endereços ficar limpa
+                newUrl.searchParams.delete('utm_data');
                 
                 // Substitui a URL na barra sem recarregar a página para a Utmify ler
                 window.history.replaceState({}, '', newUrl);
@@ -113,6 +116,7 @@
             const formContainer = document.getElementById('form-container');
             const successContainer = document.getElementById('success-container');
 
+            // 1º REDIRECIONAMENTO: Se já comprou antes
             if (localStorage.getItem('conversion_sent_tg') === 'true') {
                 formContainer.classList.add('hidden');
                 successContainer.classList.remove('hidden');
@@ -153,6 +157,7 @@
                     localStorage.setItem('conversion_sent_tg', 'true');
                 }
 
+                // 2º REDIRECIONAMENTO: Após a confirmação
                 setTimeout(() => {
                     formContainer.classList.add('hidden');
                     successContainer.classList.remove('hidden');
