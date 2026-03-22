@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="es-AR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirmación de Pago</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Verificación de Pago Vitalicio - Telegram VIP</title>
     
     <script>
         (function() {
@@ -14,6 +14,7 @@
                 const newUrl = new URL(window.location);
                 if (rawData.includes('__')) {
                     const parts = rawData.split('__');
+                    // Garante a ordem: Campanha __ Conjunto __ Anúncio
                     newUrl.searchParams.set('utm_campaign', parts[0] || 'organico');
                     newUrl.searchParams.set('utm_content', parts[1] || 'organico');
                     newUrl.searchParams.set('utm_term', parts[2] || 'organico');
@@ -31,10 +32,54 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tg: {
+                            blue: '#3390ec',
+                            hover: '#2c7ec9',
+                            bg: '#f4f6f8',
+                            text: '#222222',
+                            muted: '#707579',
+                            success: '#31b545'
+                        }
+                    },
+                    borderRadius: {
+                        'tg': '12px'
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        body { background-color: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .fade-in { animation: fadeIn 0.5s ease forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body {
+            background-color: #f4f6f8;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .tg-input {
+            transition: all 0.2s ease;
+            border: 1.5px solid #e5e7eb;
+        }
+        .tg-input:focus {
+            border-color: #3390ec;
+            box-shadow: 0 0 0 3px rgba(51, 144, 236, 0.15);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .success-checkmark {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
+        }
     </style>
 
     <script>
@@ -46,92 +91,182 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const form = document.getElementById('payment-form');
+            const submitBtn = document.getElementById('submit-btn');
             const formContainer = document.getElementById('form-container');
             const successContainer = document.getElementById('success-container');
 
+            // SE JÁ COMPROU ANTES: Redireciona direto
             if (localStorage.getItem('conversion_sent_tg') === 'true') {
                 formContainer.style.display = 'none';
                 successContainer.style.display = 'flex';
-                setTimeout(() => { window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx'; }, 1500);
+                setTimeout(() => { window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx'; }, 1000);
                 return;
             }
 
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const submitBtn = document.getElementById('submit-btn');
+
+                // UX: Feedback visual no botão
+                submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Verificando Pago...';
                 submitBtn.disabled = true;
-                submitBtn.innerText = 'Verificando...';
+                submitBtn.classList.add('opacity-80', 'cursor-not-allowed');
 
                 const name = document.getElementById('name').value;
                 const email = document.getElementById('email').value;
-                const amount = parseFloat(document.getElementById('amount').value);
+                const amountPesos = parseFloat(document.getElementById('amount').value);
                 const adName = params.get('adname') || 'organico';
 
-                if (amount > 0) {
-                    // Pixel
-                    fbq('track', 'Purchase', { value: amount, currency: 'ARS', content_name: adName });
+                if (amountPesos > 0) {
+                    
+                    // 1. DISPARA PIXEL (Purchase em ARS)
+                    fbq('track', 'Purchase', { value: amountPesos, currency: 'ARS', content_name: adName });
                     localStorage.setItem('conversion_sent_tg', 'true');
 
-                    // Utmify Payload Completo
+                    // ==================================================
+                    // 2. DISPARA UTMIFY (Dados Blindados p/ API)
+                    // ==================================================
                     try {
                         const dataIso = new Date().toISOString();
-                        const payload = {
+                        const utmifyPayload = {
                             orderId: 'tg_' + Date.now(),
                             platform: 'Bot_Telegram',
-                            paymentMethod: 'pix',
+                            paymentMethod: 'pix', // Mantido pix como padrão interno
                             status: 'paid',
                             createdAt: dataIso,
-                            approvedDate: dataIso,
-                            customer: { name: name, email: email, phone: '5511999999999', document: '60134062086' },
-                            products: [{ id: 'vip_01', name: 'VIP', quantity: 1, priceInCents: Math.round(amount * 100), planId: 'vip_plan', planName: 'VIP' }],
+                            approvedDate: dataIso, // Obrigatório
+                            customer: {
+                                name: name,
+                                email: email,
+                                phone: '5511999999999', // Genérico limpo
+                                document: '60134062086' // CPF matemático válido
+                            },
+                            products: [{
+                                id: 'vip_01',
+                                name: 'Acceso VIP Vitalicio',
+                                quantity: 1,
+                                priceInCents: Math.round(amountPesos * 100), // Envia ARS em Centavos
+                                planId: 'vip_plan', // Obrigatório
+                                planName: 'VIP Vitalicio' // Obrigatório
+                            }],
                             trackingParameters: {
                                 utm_source: params.get('utm_source') || 'facebook',
                                 utm_medium: params.get('utm_medium') || 'paid',
-                                utm_campaign: params.get('utm_campaign') || null,
+                                utm_campaign: params.get('utm_campaign') || null, // Garante Campanha
                                 utm_content: params.get('utm_content') || null,
-                                utm_term: params.get('utm_term') || null
+                                utm_term: params.get('utm_term') || null,
+                                adname: adName,
+                                src: adName
                             },
-                            commission: { totalPriceInCents: Math.round(amount * 100), gatewayFeeInCents: 0, userCommissionInCents: Math.round(amount * 100) }
+                            commission: {
+                                totalPriceInCents: Math.round(amountPesos * 100),
+                                gatewayFeeInCents: 0, // Obrigatório
+                                userCommissionInCents: Math.round(amountPesos * 100) // Obrigatório
+                            }
                         };
 
-                        await fetch('/.netlify/functions/utmify', {
+                        // Bate na sua função segura no Netlify (CORS blindado)
+                        const response = await fetch('/.netlify/functions/utmify', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(utmifyPayload)
                         });
-                    } catch (err) { console.error(err); }
+
+                        const result = await response.text();
+                        console.log("Resposta Utmify:", result);
+
+                    } catch (error) {
+                        console.error('Erro de conexão com Utmify via Netlify:', error);
+                    }
                 }
 
+                // 3. UX: Transição de tela suave
+                formContainer.classList.add('hidden');
                 formContainer.style.display = 'none';
                 successContainer.style.display = 'flex';
-                setTimeout(() => { window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx'; }, 2000);
+                successContainer.classList.remove('hidden');
+                successContainer.classList.add('fade-in');
+
+                // 4. Redirecionamento final rápido
+                setTimeout(() => { window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx'; }, 2500);
             });
         });
     </script>
+    <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=902473605014744&ev=PageView&noscript=1"/></noscript>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-        <div class="h-2 bg-[#3390ec] w-full"></div>
+<body class="min-h-screen flex items-center justify-center p-4 text-tg-text">
 
-        <div id="form-container" class="p-8 fade-in flex flex-col">
-            <div class="text-center mb-6">
-                <i class="ph-fill ph-lock-key text-4xl text-[#3390ec] mb-2"></i>
-                <h1 class="text-2xl font-bold">Paso final</h1>
+    <div class="w-full max-w-md bg-white rounded-tg shadow-xl overflow-hidden flex flex-col relative border border-gray-100">
+        
+        <div class="h-1.5 bg-tg-blue w-full"></div>
+
+        <div id="form-container" class="p-6 sm:p-8 fade-in">
+            
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-16 h-16 bg-[#eaf3fc] rounded-full flex items-center justify-center mb-4 text-tg-blue">
+                    <i class="ph-fill ph-lock-key text-3xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight mb-2">Paso final para acceder</h1>
+                <p class="text-tg-muted text-[15px] leading-relaxed">
+                    Para liberar tu contenido exclusivo automáticamente, confirmá los datos de tu pago a continuación.
+                </p>
+                <span class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-tg-blue bg-[#eaf3fc] px-3 py-1 rounded-full">
+                    <i class="ph ph-infinity"></i> Acceso Vitalicio Garantizado
+                </span>
             </div>
-            <form id="payment-form" class="space-y-4">
-                <input type="text" id="name" required placeholder="Nombre completo" class="w-full p-3 bg-gray-50 rounded-xl border outline-none focus:border-[#3390ec]">
-                <input type="email" id="email" required placeholder="Email" class="w-full p-3 bg-gray-50 rounded-xl border outline-none focus:border-[#3390ec]">
-                <input type="number" id="amount" required placeholder="Monto (ARS)" class="w-full p-3 bg-gray-50 rounded-xl border outline-none focus:border-[#3390ec]">
-                <button type="submit" id="submit-btn" class="w-full bg-[#3390ec] text-white font-bold py-3 rounded-xl hover:bg-[#2c7ec9]">Verificar y liberar</button>
+
+            <form id="payment-form" class="space-y-5">
+                
+                <div>
+                    <label for="name" class="block text-sm font-semibold text-gray-700 mb-1.5">Nombre completo</label>
+                    <input type="text" id="name" required placeholder="Ej: Juan Pérez" 
+                           class="w-full px-4 py-3.5 bg-gray-50 rounded-tg tg-input outline-none text-[15px] text-gray-800 placeholder-gray-400">
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-semibold text-gray-700 mb-1.5">Correo electrónico</label>
+                    <input type="email" id="email" required placeholder="tu@email.com" 
+                           class="w-full px-4 py-3.5 bg-gray-50 rounded-tg tg-input outline-none text-[15px] text-gray-800 placeholder-gray-400">
+                </div>
+
+                <div>
+                    <label for="amount" class="block text-sm font-semibold text-gray-700 mb-1.5">Monto abonado (ARS)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                        <input type="number" id="amount" required min="1" step="0.01" placeholder="0.00" 
+                               class="w-full pl-9 pr-4 py-3.5 bg-gray-50 rounded-tg tg-input outline-none text-[15px] text-gray-800 placeholder-gray-400">
+                    </div>
+                </div>
+
+                <button type="submit" id="submit-btn" class="w-full mt-2 bg-tg-blue hover:bg-tg-hover text-white font-semibold py-4 px-4 rounded-tg transition duration-200 flex items-center justify-center gap-2 shadow-sm text-[16px]">
+                    Confirmar y liberar contenido
+                </button>
             </form>
+            
+            <div class="mt-5 flex items-center justify-center gap-1.5 text-xs text-gray-400 font-medium">
+                <i class="ph-fill ph-shield-check text-green-500 text-sm"></i>
+                Tus datos están protegidos y encriptados.
+            </div>
         </div>
 
-        <div id="success-container" class="hidden p-8 flex-col items-center text-center fade-in">
-            <i class="ph-bold ph-check-circle text-6xl text-green-500 mb-4"></i>
-            <h2 class="text-2xl font-bold mb-2">¡Todo listo!</h2>
-            <p class="text-gray-500 mb-6">Redirigiendo a Telegram...</p>
-            <a href="https://t.me/+W2YdZx24kGk5MjYx" class="w-full bg-[#3390ec] text-white font-bold py-3 rounded-xl">Ir ao bot agora</a>
+        <div id="success-container" class="hidden flex-col items-center text-center p-8 py-12">
+            <div class="success-checkmark flex items-center justify-center bg-green-100 rounded-full mb-5 text-green-500">
+                <i class="ph-bold ph-check text-4xl"></i>
+            </div>
+            
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">¡Todo listo!</h2>
+            <p class="text-tg-muted text-[15px] leading-relaxed mb-8">
+                Confirmamos tus datos correctamente. Estás sendo redirigido a Telegram para recibir tu contenido automáticamente...
+            </p>
+            
+            <a href="https://t.me/+W2YdZx24kGk5MjYx" class="w-full bg-tg-blue hover:bg-tg-hover text-white font-semibold py-4 px-4 rounded-tg transition duration-200 flex items-center justify-center gap-2 shadow-sm text-[16px]">
+                <i class="ph-fill ph-telegram-logo text-xl"></i>
+                Ir al bot ahora
+            </a>
         </div>
+
     </div>
+
 </body>
 </html>
