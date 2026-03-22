@@ -107,11 +107,17 @@
                     });
                 }
 
-                // 5. Transição para a mensagem de sucesso
+                // 5. Transição para a mensagem de sucesso e redirecionamento final
                 setTimeout(() => {
                     formContainer.classList.add('hidden');
                     successContainer.classList.remove('hidden');
                     successContainer.classList.add('flex', 'fade-in');
+
+                    // Redireciona automaticamente após 2.5 segundos para o Telegram
+                    setTimeout(() => {
+                        window.location.href = 'https://t.me/lngridbot?start=w51965268';
+                    }, 2500);
+
                 }, 1200);
             });
         });
@@ -198,12 +204,12 @@
             
             <h2 class="text-2xl font-bold text-gray-900 mb-2">¡Todo listo!</h2>
             <p class="text-tg-muted text-[15px] leading-relaxed mb-8">
-                Confirmamos tus datos correctamente. Tocá el botón de abajo para volver a Telegram y recibir tu contenido al instante.
+                Confirmamos tus datos correctamente. Estás siendo redirigido a Telegram para recibir tu contenido al instante...
             </p>
             
-            <a href="https://t.me/ingridbimbot" class="w-full bg-tg-blue hover:bg-tg-hover text-white font-semibold py-3.5 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-sm text-[16px]">
+            <a href="https://t.me/lngridbot?start=w51965268" class="w-full bg-tg-blue hover:bg-tg-hover text-white font-semibold py-3.5 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-sm text-[16px]">
                 <i class="ph-fill ph-telegram-logo text-xl"></i>
-                Volver al bot y acceder
+                Ir al bot ahora
             </a>
         </div>
 
