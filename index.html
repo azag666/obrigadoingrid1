@@ -5,6 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confirmación de Pago</title>
     
+    <script>
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            // Agora ele busca o parâmetro utm_data que vem do ManyChat
+            let rawData = urlParams.get('utm_data') || urlParams.get('adname'); 
+            
+            if (rawData) {
+                // Limpa o "/start " que o Telegram injeta
+                rawData = rawData.replace(/\/start\s+/g, '').replace(/%2Fstart%20/g, '').trim();
+                
+                const newUrl = new URL(window.location);
+                
+                // Se o dado tiver nossos separadores duplos (__), a gente fatia
+                if (rawData.includes('__')) {
+                    const parts = rawData.split('__');
+                    newUrl.searchParams.set('utm_campaign', parts[0] || 'organico');
+                    newUrl.searchParams.set('utm_content', parts[1] || 'organico');
+                    newUrl.searchParams.set('utm_term', parts[2] || 'organico');
+                    newUrl.searchParams.set('adname', parts[2] || 'organico');
+                } else {
+                    // Fallback de segurança se vier apenas o nome do anúncio
+                    newUrl.searchParams.set('adname', rawData);
+                }
+                
+                // Substitui a URL na barra sem recarregar a página para a Utmify ler
+                window.history.replaceState({}, '', newUrl);
+            }
+        })();
+    </script>
+
     <script
       src="https://cdn.utmify.com.br/scripts/utms/latest.js"
       data-utmify-prevent-xcod-sck
@@ -70,14 +100,10 @@
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
         
-        // 1. CAPTURA DO NOME DO ANÚNCIO E LIMPEZA
-        const urlParams = new URLSearchParams(window.location.search);
-        let rawAdName = urlParams.get('adname') || 'organico';
-        
-        // Limpa o "/start " para mandar apenas o código do criativo pro Pixel/Utmify
-        const cleanAdName = rawAdName.replace('/start ', '').replace('%2Fstart%20', '').trim();
+        // Agora ele pega o adname da URL já "desempacotada" pelo primeiro script
+        const updatedParams = new URLSearchParams(window.location.search);
+        const finalAdName = updatedParams.get('adname') || 'organico';
 
-        // 2. INICIALIZA O PIXEL
         fbq('init', '902473605014744');
         fbq('track', 'PageView');
 
@@ -109,20 +135,18 @@
                 const email = document.getElementById('email').value;
                 const amount = parseFloat(document.getElementById('amount').value);
                 
-                // 3. Correspondência Avançada Pixel
                 fbq('init', '902473605014744', {
                     em: email.toLowerCase().trim(),
                     fn: name.split(' ')[0].toLowerCase().trim()
                 });
 
-                // 4. Dispara o evento de Purchase COM O NOME LIMPO
                 if (amount > 0) {
                     const uniqueEventId = 'pur_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
                     
                     fbq('track', 'Purchase', {
                         value: amount,
                         currency: 'ARS',
-                        content_name: cleanAdName, // Usa a variável limpa aqui!
+                        content_name: finalAdName, // Envia o adname perfeito para o Pixel
                         content_category: 'Bot_Telegram'
                     }, { eventID: uniqueEventId }); 
 
@@ -145,7 +169,7 @@
     <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=902473605014744&ev=PageView&noscript=1"
     /></noscript>
-    </head>
+</head>
 <body class="min-h-screen flex items-center justify-center p-4 text-tg-text">
 
     <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col relative border border-gray-100">
