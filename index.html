@@ -31,61 +31,51 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-    <script>
-        tailwind.config = {
-            theme: { extend: { colors: { tg: { blue: '#3390ec', hover: '#2c7ec9', bg: '#f4f6f8', text: '#222222', muted: '#707579' } } } }
-        }
-    </script>
-
     <style>
-        body { background-color: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
-        .tg-input { transition: all 0.2s ease; border: 1.5px solid #e5e7eb; }
-        .tg-input:focus { border-color: #3390ec; box-shadow: 0 0 0 3px rgba(51, 144, 236, 0.15); }
-        .fade-in { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        body { background-color: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 
     <script>
-        !function(f,b,e,v,n,t,s) { if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)}; if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0'; n.queue=[];t=b.createElement(e);t.async=!0; t.src=v;s=b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t,s)}(window, document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window, document,'script','https://connect.facebook.net/en_US/fbevents.js');
         
-        const updatedParams = new URLSearchParams(window.location.search);
-        const finalAdName = updatedParams.get('adname') || 'organico';
+        const params = new URLSearchParams(window.location.search);
         fbq('init', '902473605014744');
         fbq('track', 'PageView');
 
         document.addEventListener('DOMContentLoaded', () => {
             const form = document.getElementById('payment-form');
-            const submitBtn = document.getElementById('submit-btn');
             const formContainer = document.getElementById('form-container');
             const successContainer = document.getElementById('success-container');
 
             if (localStorage.getItem('conversion_sent_tg') === 'true') {
-                formContainer.classList.add('hidden');
-                successContainer.classList.remove('hidden');
-                successContainer.classList.add('flex', 'fade-in');
+                formContainer.style.display = 'none';
+                successContainer.style.display = 'flex';
                 setTimeout(() => { window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx'; }, 1500);
                 return;
             }
 
-            form.addEventListener('submit', async function(e) {
+            form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Verificando...';
+                const submitBtn = document.getElementById('submit-btn');
                 submitBtn.disabled = true;
+                submitBtn.innerText = 'Verificando...';
 
                 const name = document.getElementById('name').value;
                 const email = document.getElementById('email').value;
                 const amount = parseFloat(document.getElementById('amount').value);
-                
-                fbq('init', '902473605014744', { em: email.toLowerCase().trim(), fn: name.split(' ')[0].toLowerCase().trim() });
+                const adName = params.get('adname') || 'organico';
 
                 if (amount > 0) {
-                    const uniqueEventId = 'pur_' + Date.now();
-                    fbq('track', 'Purchase', { value: amount, currency: 'ARS', content_name: finalAdName }, { eventID: uniqueEventId }); 
+                    // Pixel
+                    fbq('track', 'Purchase', { value: amount, currency: 'ARS', content_name: adName });
                     localStorage.setItem('conversion_sent_tg', 'true');
 
+                    // Utmify Payload Completo
                     try {
                         const dataIso = new Date().toISOString();
-                        const utmifyPayload = {
+                        const payload = {
                             orderId: 'tg_' + Date.now(),
                             platform: 'Bot_Telegram',
                             paymentMethod: 'pix',
@@ -93,13 +83,13 @@
                             createdAt: dataIso,
                             approvedDate: dataIso,
                             customer: { name: name, email: email, phone: '5511999999999', document: '60134062086' },
-                            products: [{ id: 'vip_01', name: 'Acesso VIP', quantity: 1, priceInCents: Math.round(amount * 100), planId: 'vip_plan', planName: 'Plano VIP' }],
+                            products: [{ id: 'vip_01', name: 'VIP', quantity: 1, priceInCents: Math.round(amount * 100), planId: 'vip_plan', planName: 'VIP' }],
                             trackingParameters: {
-                                utm_source: updatedParams.get('utm_source') || 'facebook',
-                                utm_medium: updatedParams.get('utm_medium') || 'paid',
-                                utm_campaign: updatedParams.get('utm_campaign') || null,
-                                utm_content: updatedParams.get('utm_content') || null,
-                                utm_term: updatedParams.get('utm_term') || null
+                                utm_source: params.get('utm_source') || 'facebook',
+                                utm_medium: params.get('utm_medium') || 'paid',
+                                utm_campaign: params.get('utm_campaign') || null,
+                                utm_content: params.get('utm_content') || null,
+                                utm_term: params.get('utm_term') || null
                             },
                             commission: { totalPriceInCents: Math.round(amount * 100), gatewayFeeInCents: 0, userCommissionInCents: Math.round(amount * 100) }
                         };
@@ -107,37 +97,40 @@
                         await fetch('/.netlify/functions/utmify', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(utmifyPayload)
+                            body: JSON.stringify(payload)
                         });
-                    } catch (error) { console.error('Erro:', error); }
+                    } catch (err) { console.error(err); }
                 }
 
-                formContainer.classList.add('hidden');
-                successContainer.classList.remove('hidden').add('flex', 'fade-in');
+                formContainer.style.display = 'none';
+                successContainer.style.display = 'flex';
                 setTimeout(() => { window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx'; }, 2000);
             });
         });
     </script>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 text-tg-text">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col relative border border-gray-100">
-        <div class="h-2 bg-tg-blue w-full"></div>
-        <div id="form-container" class="p-6 sm:p-8 fade-in">
-            <div class="flex flex-col items-center text-center mb-6">
-                <div class="w-16 h-16 bg-[#eaf3fc] rounded-full flex items-center justify-center mb-4 text-tg-blue"><i class="ph-fill ph-lock-key text-3xl"></i></div>
-                <h1 class="text-2xl font-bold mb-2">Paso final para acceder</h1>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+        <div class="h-2 bg-[#3390ec] w-full"></div>
+
+        <div id="form-container" class="p-8 fade-in flex flex-col">
+            <div class="text-center mb-6">
+                <i class="ph-fill ph-lock-key text-4xl text-[#3390ec] mb-2"></i>
+                <h1 class="text-2xl font-bold">Paso final</h1>
             </div>
-            <form id="payment-form" class="space-y-5">
-                <input type="text" id="name" required placeholder="Nombre completo" class="w-full px-4 py-3 bg-gray-50 rounded-xl tg-input outline-none">
-                <input type="email" id="email" required placeholder="Correo electrónico" class="w-full px-4 py-3 bg-gray-50 rounded-xl tg-input outline-none">
-                <div class="relative"><span class="absolute left-4 top-1/2 -translate-y-1/2">$</span><input type="number" id="amount" required min="1" step="0.01" class="w-full pl-9 pr-4 py-3 bg-gray-50 rounded-xl tg-input outline-none"></div>
-                <button type="submit" id="submit-btn" class="w-full mt-2 bg-tg-blue hover:bg-tg-hover text-white font-semibold py-3.5 rounded-xl">Verificar y liberar contenido</button>
+            <form id="payment-form" class="space-y-4">
+                <input type="text" id="name" required placeholder="Nombre completo" class="w-full p-3 bg-gray-50 rounded-xl border outline-none focus:border-[#3390ec]">
+                <input type="email" id="email" required placeholder="Email" class="w-full p-3 bg-gray-50 rounded-xl border outline-none focus:border-[#3390ec]">
+                <input type="number" id="amount" required placeholder="Monto (ARS)" class="w-full p-3 bg-gray-50 rounded-xl border outline-none focus:border-[#3390ec]">
+                <button type="submit" id="submit-btn" class="w-full bg-[#3390ec] text-white font-bold py-3 rounded-xl hover:bg-[#2c7ec9]">Verificar y liberar</button>
             </form>
         </div>
-        <div id="success-container" class="hidden flex-col items-center text-center p-8 py-12">
-            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-5 text-green-500"><i class="ph-bold ph-check text-4xl"></i></div>
+
+        <div id="success-container" class="hidden p-8 flex-col items-center text-center fade-in">
+            <i class="ph-bold ph-check-circle text-6xl text-green-500 mb-4"></i>
             <h2 class="text-2xl font-bold mb-2">¡Todo listo!</h2>
-            <a href="https://t.me/+W2YdZx24kGk5MjYx" class="w-full bg-tg-blue text-white font-semibold py-3.5 rounded-xl">Ir al bot ahora</a>
+            <p class="text-gray-500 mb-6">Redirigiendo a Telegram...</p>
+            <a href="https://t.me/+W2YdZx24kGk5MjYx" class="w-full bg-[#3390ec] text-white font-bold py-3 rounded-xl">Ir ao bot agora</a>
         </div>
     </div>
 </body>
