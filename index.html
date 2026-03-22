@@ -69,16 +69,16 @@
                 const pesos = parseFloat(document.getElementById('amount').value);
                 const adName = params.get('adname') || 'organico';
 
-                // 1. DISPARA PIXEL META (IMEDIATO)
-                fbq('track', 'Purchase', { 
-                    value: pesos, 
-                    currency: 'ARS', 
-                    content_name: adName 
-                });
-                localStorage.setItem('conversion_sent_tg', 'true');
+                if (pesos > 0) {
+                    // 1. DISPARA PIXEL META (IMEDIATO)
+                    fbq('track', 'Purchase', { 
+                        value: pesos, 
+                        currency: 'ARS', 
+                        content_name: adName 
+                    });
+                    localStorage.setItem('conversion_sent_tg', 'true');
 
-                // 2. ENVIA PARA UTMIFY E ESPERA CONCLUSÃO (OU TIMEOUT)
-                const sendUtmify = async () => {
+                    // 2. ENVIA PARA UTMIFY
                     try {
                         const isoDate = new Date().toISOString();
                         const payload = {
@@ -108,8 +108,7 @@
                                 utm_medium: params.get('utm_medium') || 'paid',
                                 utm_campaign: params.get('utm_campaign') || '34',
                                 utm_content: params.get('utm_content') || null,
-                                utm_term: params.get('utm_term') || null,
-                                adname: adName
+                                utm_term: params.get('utm_term') || null
                             },
                             commission: { 
                                 totalPriceInCents: Math.round(pesos * 100), 
@@ -118,6 +117,7 @@
                             }
                         };
 
+                        // Envia para a função do Netlify
                         await fetch('/.netlify/functions/utmify', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -126,15 +126,12 @@
                     } catch (err) { 
                         console.error("Erro Utmify:", err); 
                     }
-                };
+                }
 
-                // Executa o envio e a transição visual
-                await sendUtmify();
-
+                // 3. TRANSIÇÃO VISUAL E REDIRECIONAMENTO
                 formBox.style.display = 'none';
                 successBox.style.display = 'flex';
                 
-                // 3. REDIRECIONAMENTO FINAL APÓS TUDO CONCLUÍDO
                 setTimeout(() => { 
                     window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx'; 
                 }, 2000);
