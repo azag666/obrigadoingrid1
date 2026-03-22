@@ -4,9 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confirmación de Pago</title>
-    <!-- Tailwind CSS -->
+    
+    <script
+      src="https://cdn.utmify.com.br/scripts/utms/latest.js"
+      data-utmify-prevent-xcod-sck
+      data-utmify-prevent-subids
+      async
+      defer
+    ></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Ícones do Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <script>
@@ -53,7 +60,6 @@
         }
     </style>
 
-    <!-- Meta Pixel Code -->
     <script>
         !function(f,b,e,v,n,t,s)
         {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -64,9 +70,12 @@
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
         
-        // 1. CAPTURA DO NOME DO ANÚNCIO (Enviado pelo ManyChat na URL)
+        // 1. CAPTURA DO NOME DO ANÚNCIO E LIMPEZA
         const urlParams = new URLSearchParams(window.location.search);
-        const adName = urlParams.get('adname') || 'organico';
+        let rawAdName = urlParams.get('adname') || 'organico';
+        
+        // Limpa o "/start " para mandar apenas o código do criativo pro Pixel/Utmify
+        const cleanAdName = rawAdName.replace('/start ', '').replace('%2Fstart%20', '').trim();
 
         // 2. INICIALIZA O PIXEL
         fbq('init', '902473605014744');
@@ -78,28 +87,24 @@
             const formContainer = document.getElementById('form-container');
             const successContainer = document.getElementById('success-container');
 
-            // BLOQUEIO LOCAL: Verifica se o usuário já converteu antes neste navegador
             if (localStorage.getItem('conversion_sent_tg') === 'true') {
                 formContainer.classList.add('hidden');
                 successContainer.classList.remove('hidden');
                 successContainer.classList.add('flex', 'fade-in');
                 
-                // Redireciona logo em seguida para o bot
                 setTimeout(() => {
                     window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx';
                 }, 1500);
-                return; // Para a execução do script aqui para não exibir o formulário
+                return;
             }
 
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
 
-                // Estado de Loading no botão (Evita duplos cliques)
                 submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Procesando...';
                 submitBtn.disabled = true;
                 submitBtn.classList.add('opacity-80', 'cursor-not-allowed');
 
-                // Captura os valores
                 const name = document.getElementById('name').value;
                 const email = document.getElementById('email').value;
                 const amount = parseFloat(document.getElementById('amount').value);
@@ -110,29 +115,25 @@
                     fn: name.split(' ')[0].toLowerCase().trim()
                 });
 
-                // 4. Dispara o evento de Purchase COM DEDUPLICAÇÃO
+                // 4. Dispara o evento de Purchase COM O NOME LIMPO
                 if (amount > 0) {
-                    // Gera um ID único baseado no timestamp exato do envio
                     const uniqueEventId = 'pur_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
                     
                     fbq('track', 'Purchase', {
                         value: amount,
                         currency: 'ARS',
-                        content_name: adName,
+                        content_name: cleanAdName, // Usa a variável limpa aqui!
                         content_category: 'Bot_Telegram'
-                    }, { eventID: uniqueEventId }); // A Meta vai usar este ID para ignorar eventos duplicados idênticos
+                    }, { eventID: uniqueEventId }); 
 
-                    // Salva no navegador que esta pessoa já comprou
                     localStorage.setItem('conversion_sent_tg', 'true');
                 }
 
-                // 5. Transição para a mensagem de sucesso e redirecionamento final
                 setTimeout(() => {
                     formContainer.classList.add('hidden');
                     successContainer.classList.remove('hidden');
                     successContainer.classList.add('flex', 'fade-in');
 
-                    // Redireciona automaticamente após 2.5 segundos para o Telegram
                     setTimeout(() => {
                         window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx';
                     }, 2500);
@@ -144,20 +145,15 @@
     <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=902473605014744&ev=PageView&noscript=1"
     /></noscript>
-    <!-- End Meta Pixel Code -->
-</head>
+    </head>
 <body class="min-h-screen flex items-center justify-center p-4 text-tg-text">
 
-    <!-- Container Principal -->
     <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col relative border border-gray-100">
         
-        <!-- Faixa azul superior sutil -->
         <div class="h-2 bg-tg-blue w-full"></div>
 
-        <!-- Conteúdo do Formulário -->
         <div id="form-container" class="p-6 sm:p-8 fade-in">
             
-            <!-- Header Icon & Titles -->
             <div class="flex flex-col items-center text-center mb-6">
                 <div class="w-16 h-16 bg-[#eaf3fc] rounded-full flex items-center justify-center mb-4 text-tg-blue">
                     <i class="ph-fill ph-lock-key text-3xl"></i>
@@ -168,7 +164,6 @@
                 </p>
             </div>
 
-            <!-- Formulario -->
             <form id="payment-form" class="space-y-5">
                 
                 <div>
@@ -212,11 +207,9 @@
             </div>
         </div>
 
-        <!-- Tela de Sucesso -->
         <div id="success-container" class="hidden flex-col items-center text-center p-8 py-12">
             <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-5 text-green-500 relative">
                 <i class="ph-bold ph-check text-4xl"></i>
-                <!-- Efeito Confetti sutil -->
                 <div class="absolute w-2 h-2 bg-blue-400 rounded-full top-0 left-0 animate-ping"></div>
                 <div class="absolute w-2 h-2 bg-yellow-400 rounded-full bottom-2 right-0 animate-ping" style="animation-delay: 0.2s"></div>
             </div>
@@ -234,7 +227,6 @@
 
     </div>
 
-    <!-- Script para mudar o texto ao selecionar arquivo -->
     <script>
         const receiptInput = document.getElementById('receipt');
         const receiptText = document.getElementById('receipt-text');
