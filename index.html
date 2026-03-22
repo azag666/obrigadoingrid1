@@ -17,7 +17,7 @@
                 
                 const newUrl = new URL(window.location);
                 
-                // Se o dado tiver nossos separadores duplos (__), a gente fatia
+                // Se o dado tiver nossos separadores duplos (__), a gente ftia
                 if (rawData.includes('__')) {
                     const parts = rawData.split('__');
                     newUrl.searchParams.set('utm_campaign', parts[0] || 'organico');
