@@ -78,10 +78,23 @@
             const formContainer = document.getElementById('form-container');
             const successContainer = document.getElementById('success-container');
 
+            // BLOQUEIO LOCAL: Verifica se o usuário já converteu antes neste navegador
+            if (localStorage.getItem('conversion_sent_tg') === 'true') {
+                formContainer.classList.add('hidden');
+                successContainer.classList.remove('hidden');
+                successContainer.classList.add('flex', 'fade-in');
+                
+                // Redireciona logo em seguida para o bot
+                setTimeout(() => {
+                    window.location.href = 'https://t.me/lngridbot?start=w51965268';
+                }, 1500);
+                return; // Para a execução do script aqui para não exibir o formulário
+            }
+
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
 
-                // Estado de Loading no botão
+                // Estado de Loading no botão (Evita duplos cliques)
                 submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Procesando...';
                 submitBtn.disabled = true;
                 submitBtn.classList.add('opacity-80', 'cursor-not-allowed');
@@ -97,14 +110,20 @@
                     fn: name.split(' ')[0].toLowerCase().trim()
                 });
 
-                // 4. Dispara o evento de Purchase
+                // 4. Dispara o evento de Purchase COM DEDUPLICAÇÃO
                 if (amount > 0) {
+                    // Gera um ID único baseado no timestamp exato do envio
+                    const uniqueEventId = 'pur_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                    
                     fbq('track', 'Purchase', {
                         value: amount,
                         currency: 'ARS',
                         content_name: adName,
                         content_category: 'Bot_Telegram'
-                    });
+                    }, { eventID: uniqueEventId }); // A Meta vai usar este ID para ignorar eventos duplicados idênticos
+
+                    // Salva no navegador que esta pessoa já comprou
+                    localStorage.setItem('conversion_sent_tg', 'true');
                 }
 
                 // 5. Transição para a mensagem de sucesso e redirecionamento final
@@ -115,7 +134,7 @@
 
                     // Redireciona automaticamente após 2.5 segundos para o Telegram
                     setTimeout(() => {
-                        window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx';
+                        window.location.href = 'https://t.me/lngridbot?start=w51965268';
                     }, 2500);
 
                 }, 1200);
@@ -209,7 +228,7 @@
             
             <a href="https://t.me/lngridbot?start=w51965268" class="w-full bg-tg-blue hover:bg-tg-hover text-white font-semibold py-3.5 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-sm text-[16px]">
                 <i class="ph-fill ph-telegram-logo text-xl"></i>
-                Ir al VIP ahora
+                Ir al bot ahora
             </a>
         </div>
 
