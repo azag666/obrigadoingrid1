@@ -11,12 +11,9 @@
             let rawData = urlParams.get('utm_data') || urlParams.get('adname'); 
             
             if (rawData) {
-                // Limpa o "/start " e variações
                 rawData = rawData.replace('/start ', '').replace(/\/start\s+/g, '').replace(/%2Fstart%20/g, '').trim();
-                
                 const newUrl = new URL(window.location);
                 
-                // Fatia os dados empacotados pelo ManyChat
                 if (rawData.includes('__')) {
                     const parts = rawData.split('__');
                     newUrl.searchParams.set('utm_campaign', parts[0] || 'organico');
@@ -27,7 +24,6 @@
                     newUrl.searchParams.set('adname', rawData);
                 }
                 
-                // Limpa a URL na barra de endereços para o cliente
                 newUrl.searchParams.delete('utm_data');
                 window.history.replaceState({}, '', newUrl);
             }
@@ -76,7 +72,6 @@
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
         
-        // Pega as variáveis finais já desempacotadas
         const updatedParams = new URLSearchParams(window.location.search);
         const finalAdName = updatedParams.get('adname') || 'organico';
         
@@ -89,7 +84,6 @@
             const formContainer = document.getElementById('form-container');
             const successContainer = document.getElementById('success-container');
 
-            // SE JÁ COMPROU ANTES: Vai direto pro Telegram
             if (localStorage.getItem('conversion_sent_tg') === 'true') {
                 formContainer.classList.add('hidden');
                 successContainer.classList.remove('hidden');
@@ -98,11 +92,9 @@
                 return;
             }
 
-            // AÇÃO AO CLICAR EM VERIFICAR
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
 
-                // Efeito visual no botão de Verificar
                 submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Verificando...';
                 submitBtn.disabled = true;
                 submitBtn.classList.add('opacity-80', 'cursor-not-allowed');
@@ -111,55 +103,60 @@
                 const email = document.getElementById('email').value;
                 const amount = parseFloat(document.getElementById('amount').value);
                 
-                // Envia dados do usuário para melhorar o Pixel
                 fbq('init', '902473605014744', { em: email.toLowerCase().trim(), fn: name.split(' ')[0].toLowerCase().trim() });
 
                 if (amount > 0) {
                     
-                    // 1. DISPARA PIXEL (Purchase)
                     const uniqueEventId = 'pur_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
                     fbq('track', 'Purchase', {
                         value: amount, currency: 'ARS', content_name: finalAdName, content_category: 'Bot_Telegram'
                     }, { eventID: uniqueEventId }); 
 
-                    // Marca no navegador que o lead virou comprador
                     localStorage.setItem('conversion_sent_tg', 'true');
 
                     // ==================================================
-                    // 2. DISPARA UTMIFY (Via Servidor Netlify)
+                    // PACOTE UTMIFY ATUALIZADO (Com todos os campos obrigatórios)
                     // ==================================================
                     try {
+                        const dataIso = new Date().toISOString();
+
                         const utmifyPayload = {
                             orderId: 'tg_' + Date.now(),
                             platform: 'Bot_Telegram',
                             paymentMethod: 'pix',
                             status: 'paid',
-                            createdAt: new Date().toISOString(), // Padrão ISO Global obrigatório
+                            createdAt: dataIso,
+                            approvedDate: dataIso, // Adicionado campo obrigatório
                             customer: {
                                 name: name,
                                 email: email,
-                                phone: '5511999999999', // Apenas números
-                                document: '60134062086' // CPF Matemático válido para não dar fraude
+                                phone: '5511999999999',
+                                document: '60134062086'
                             },
                             products: [{
                                 id: 'vip_01',
                                 name: 'Acesso VIP',
                                 quantity: 1,
-                                priceInCents: Math.round(amount * 100)
+                                priceInCents: Math.round(amount * 100),
+                                planId: 'vip_plan', // Adicionado campo obrigatório
+                                planName: 'Plano VIP' // Adicionado campo obrigatório
                             }],
                             trackingParameters: {
+                                utm_source: updatedParams.get('utm_source') || null, // Adicionado campo obrigatório
+                                utm_medium: updatedParams.get('utm_medium') || null, // Adicionado campo obrigatório
                                 utm_campaign: updatedParams.get('utm_campaign') || null,
                                 utm_content: updatedParams.get('utm_content') || null,
                                 utm_term: updatedParams.get('utm_term') || null,
                                 adname: finalAdName,
-                                src: finalAdName // Backup de garantia
+                                src: finalAdName
                             },
                             commission: {
-                                totalPriceInCents: Math.round(amount * 100)
+                                totalPriceInCents: Math.round(amount * 100),
+                                gatewayFeeInCents: 0, // Adicionado campo obrigatório
+                                userCommissionInCents: Math.round(amount * 100) // Adicionado campo obrigatório
                             }
                         };
 
-                        // Bate na sua função segura no Netlify
                         const response = await fetch('/.netlify/functions/utmify', {
                             method: 'POST',
                             headers: {
@@ -172,11 +169,10 @@
                         console.log("Resposta Utmify:", result);
 
                     } catch (error) {
-                        console.error('Erro de conexão com Utmify via Netlify:', error);
+                        console.error('Erro de conexão com Netlify Function:', error);
                     }
                 }
 
-                // 3. TRANSIÇÃO DE TELA E REDIRECIONAMENTO FINAL
                 formContainer.classList.add('hidden');
                 successContainer.classList.remove('hidden');
                 successContainer.classList.add('flex', 'fade-in');
