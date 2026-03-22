@@ -36,6 +36,7 @@
         .tg-blue { background-color: #3390ec; }
         .fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes progress { from { width: 0%; } to { width: 100%; } }
     </style>
 
     <script>
@@ -68,10 +69,16 @@
                 const pesos = parseFloat(document.getElementById('amount').value);
                 const adName = params.get('adname') || 'organico';
 
-                if (pesos > 0) {
-                    fbq('track', 'Purchase', { value: pesos, currency: 'ARS', content_name: adName });
-                    localStorage.setItem('conversion_sent_tg', 'true');
+                // 1. DISPARA PIXEL META (IMEDIATO)
+                fbq('track', 'Purchase', { 
+                    value: pesos, 
+                    currency: 'ARS', 
+                    content_name: adName 
+                });
+                localStorage.setItem('conversion_sent_tg', 'true');
 
+                // 2. ENVIA PARA UTMIFY E ESPERA CONCLUSÃO (OU TIMEOUT)
+                const sendUtmify = async () => {
                     try {
                         const isoDate = new Date().toISOString();
                         const payload = {
@@ -79,15 +86,14 @@
                             platform: 'Bot_Telegram',
                             paymentMethod: 'other',
                             status: 'paid',
-                            currency: 'ARS', // Define explicitamente a moeda como ARS
+                            currency: 'ARS', 
                             createdAt: isoDate,
                             approvedDate: isoDate,
                             customer: { 
                                 name: name, 
                                 email: email, 
-                                phone: '5491199999999', // Prefixo da Argentina
-                                document: '60134062086',
-                                language: 'es'
+                                phone: '5491199999999', 
+                                document: '60134062086'
                             },
                             products: [{ 
                                 id: 'vip_01', 
@@ -107,7 +113,6 @@
                             },
                             commission: { 
                                 totalPriceInCents: Math.round(pesos * 100), 
-                                currency: 'ARS', // Reforça ARS na comissão
                                 gatewayFeeInCents: 0, 
                                 userCommissionInCents: Math.round(pesos * 100) 
                             }
@@ -118,12 +123,21 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload)
                         });
-                    } catch (err) { console.error(err); }
-                }
+                    } catch (err) { 
+                        console.error("Erro Utmify:", err); 
+                    }
+                };
+
+                // Executa o envio e a transição visual
+                await sendUtmify();
 
                 formBox.style.display = 'none';
                 successBox.style.display = 'flex';
-                setTimeout(() => { window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx'; }, 2000);
+                
+                // 3. REDIRECIONAMENTO FINAL APÓS TUDO CONCLUÍDO
+                setTimeout(() => { 
+                    window.location.href = 'https://t.me/+W2YdZx24kGk5MjYx'; 
+                }, 2000);
             });
         });
     </script>
@@ -142,13 +156,13 @@
             </div>
 
             <form id="payment-form" class="space-y-4">
-                <input type="text" id="name" required placeholder="Nombre completo" class="w-full p-4 bg-gray-50 rounded-xl border outline-none focus:border-[#3390ec]">
-                <input type="email" id="email" required placeholder="Email de compra" class="w-full p-4 bg-gray-50 rounded-xl border outline-none focus:border-[#3390ec]">
+                <input type="text" id="name" required placeholder="Nombre completo" class="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-[#3390ec] text-gray-700">
+                <input type="email" id="email" required placeholder="Correo electrónico" class="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-[#3390ec] text-gray-700">
                 <div class="relative">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
-                    <input type="number" id="amount" required placeholder="Monto en Pesos ARS" class="w-full p-4 pl-8 bg-gray-50 rounded-xl border outline-none focus:border-[#3390ec]">
+                    <input type="number" id="amount" required placeholder="Monto en Pesos ARS" class="w-full p-4 pl-8 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-[#3390ec] text-gray-700">
                 </div>
-                <button type="submit" id="submit-btn" class="w-full tg-blue text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#2c7ec9] transition-all">
+                <button type="submit" id="submit-btn" class="w-full tg-blue text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#2c7ec9] transition-all transform active:scale-95">
                     VERIFICAR Y ENTRAR AHORA
                 </button>
                 <div class="flex items-center justify-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
@@ -164,6 +178,9 @@
             </div>
             <h2 class="text-2xl font-bold text-gray-800">¡Verificado!</h2>
             <p class="text-gray-500 mt-2">Acceso liberado vitaliciamente. Entrando al Telegram VIP...</p>
+            <div class="mt-8 w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full tg-blue" style="width: 100%; animation: progress 2s linear;"></div>
+            </div>
         </div>
     </div>
 </body>
