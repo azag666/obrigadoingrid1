@@ -9,9 +9,14 @@
         (function() {
             const urlParams = new URLSearchParams(window.location.search);
             let rawData = urlParams.get('utm_data') || urlParams.get('adname'); 
+            
             if (rawData) {
+                // Limpa o "/start " e variações
                 rawData = rawData.replace('/start ', '').replace(/\/start\s+/g, '').replace(/%2Fstart%20/g, '').trim();
+                
                 const newUrl = new URL(window.location);
+                
+                // Fatia os dados empacotados pelo ManyChat
                 if (rawData.includes('__')) {
                     const parts = rawData.split('__');
                     newUrl.searchParams.set('utm_campaign', parts[0] || 'organico');
@@ -21,6 +26,8 @@
                 } else {
                     newUrl.searchParams.set('adname', rawData);
                 }
+                
+                // Limpa a URL na barra de endereços para o cliente
                 newUrl.searchParams.delete('utm_data');
                 window.history.replaceState({}, '', newUrl);
             }
@@ -31,6 +38,24 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tg: {
+                            blue: '#3390ec',
+                            hover: '#2c7ec9',
+                            bg: '#f4f6f8',
+                            text: '#222222',
+                            muted: '#707579'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
     <style>
         body { background-color: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
@@ -51,8 +76,10 @@
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
         
+        // Pega as variáveis finais já desempacotadas
         const updatedParams = new URLSearchParams(window.location.search);
         const finalAdName = updatedParams.get('adname') || 'organico';
+        
         fbq('init', '902473605014744');
         fbq('track', 'PageView');
 
@@ -62,6 +89,7 @@
             const formContainer = document.getElementById('form-container');
             const successContainer = document.getElementById('success-container');
 
+            // SE JÁ COMPROU ANTES: Vai direto pro Telegram
             if (localStorage.getItem('conversion_sent_tg') === 'true') {
                 formContainer.classList.add('hidden');
                 successContainer.classList.remove('hidden');
@@ -70,10 +98,12 @@
                 return;
             }
 
+            // AÇÃO AO CLICAR EM VERIFICAR
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
 
-                submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Procesando...';
+                // Efeito visual no botão de Verificar
+                submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Verificando...';
                 submitBtn.disabled = true;
                 submitBtn.classList.add('opacity-80', 'cursor-not-allowed');
 
@@ -81,34 +111,35 @@
                 const email = document.getElementById('email').value;
                 const amount = parseFloat(document.getElementById('amount').value);
                 
+                // Envia dados do usuário para melhorar o Pixel
                 fbq('init', '902473605014744', { em: email.toLowerCase().trim(), fn: name.split(' ')[0].toLowerCase().trim() });
 
                 if (amount > 0) {
+                    
+                    // 1. DISPARA PIXEL (Purchase)
                     const uniqueEventId = 'pur_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
                     fbq('track', 'Purchase', {
                         value: amount, currency: 'ARS', content_name: finalAdName, content_category: 'Bot_Telegram'
                     }, { eventID: uniqueEventId }); 
 
+                    // Marca no navegador que o lead virou comprador
                     localStorage.setItem('conversion_sent_tg', 'true');
 
                     // ==================================================
-                    // ENVIO DA VENDA PARA A FUNÇÃO NO NETLIFY
+                    // 2. DISPARA UTMIFY (Via Servidor Netlify)
                     // ==================================================
                     try {
-                        const now = new Date();
-                        const dataFormatada = now.toISOString().slice(0, 19).replace('T', ' ');
-
                         const utmifyPayload = {
                             orderId: 'tg_' + Date.now(),
                             platform: 'Bot_Telegram',
                             paymentMethod: 'pix',
                             status: 'paid',
-                            createdAt: dataFormatada,
+                            createdAt: new Date().toISOString(), // Padrão ISO Global obrigatório
                             customer: {
                                 name: name,
                                 email: email,
-                                phone: '5511999999999', // Apenas números, SEM o +
-                                document: '00000000000' // CPF genérico obrigatório
+                                phone: '5511999999999', // Apenas números
+                                document: '60134062086' // CPF Matemático válido para não dar fraude
                             },
                             products: [{
                                 id: 'vip_01',
@@ -121,13 +152,14 @@
                                 utm_content: updatedParams.get('utm_content') || null,
                                 utm_term: updatedParams.get('utm_term') || null,
                                 adname: finalAdName,
-                                src: finalAdName
+                                src: finalAdName // Backup de garantia
                             },
                             commission: {
                                 totalPriceInCents: Math.round(amount * 100)
                             }
                         };
 
+                        // Bate na sua função segura no Netlify
                         const response = await fetch('/.netlify/functions/utmify', {
                             method: 'POST',
                             headers: {
@@ -140,10 +172,11 @@
                         console.log("Resposta Utmify:", result);
 
                     } catch (error) {
-                        console.error('Erro de conexão com Netlify Function:', error);
+                        console.error('Erro de conexão com Utmify via Netlify:', error);
                     }
                 }
 
+                // 3. TRANSIÇÃO DE TELA E REDIRECIONAMENTO FINAL
                 formContainer.classList.add('hidden');
                 successContainer.classList.remove('hidden');
                 successContainer.classList.add('flex', 'fade-in');
@@ -194,8 +227,10 @@
                     </label>
                     <input type="file" id="receipt" accept="image/*,.pdf" class="hidden">
                 </div>
+                
                 <button type="submit" id="submit-btn" class="w-full mt-2 bg-tg-blue hover:bg-tg-hover text-white font-semibold py-3.5 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-sm text-[16px]">
-                    Confirmar y liberar contenido
+                    <i class="ph ph-check-circle text-xl"></i>
+                    Verificar y liberar contenido
                 </button>
             </form>
             
@@ -228,10 +263,10 @@
         
         receiptInput.addEventListener('change', function() {
             if (this.files && this.files.length > 0) {
-                receiptText.textContent = '¡Archivo seleccionado!';
+                receiptText.textContent = '¡Archivo verificado!';
                 receiptText.parentElement.classList.add('border-green-400', 'bg-green-50', 'text-green-600');
                 receiptText.parentElement.classList.remove('border-gray-300', 'text-tg-blue');
-                receiptText.previousElementSibling.className = 'ph-fill ph-file-text text-xl';
+                receiptText.previousElementSibling.className = 'ph-fill ph-check-circle text-xl';
             }
         });
     </script>
