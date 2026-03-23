@@ -5,29 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Verificación de Acceso VIP</title>
     
-    <!-- 1. DESEMPACOTADOR DE UTMs (BLINDADO PARA MANYCHAT) -->
+    <!-- 1. DESEMPACOTADOR DE UTMs (BLINDADO COM TRY/CATCH) -->
     <script>
         (function() {
             const urlParams = new URLSearchParams(window.location.search);
+            const newUrl = new URL(window.location.href);
+            
+            // Força source e medium na URL para a Utmify nunca ignorar a Campanha
+            if (!newUrl.searchParams.has('utm_source')) newUrl.searchParams.set('utm_source', 'facebook');
+            if (!newUrl.searchParams.has('utm_medium')) newUrl.searchParams.set('utm_medium', 'paid');
+
             let rawData = urlParams.get('utm_data') || urlParams.get('adname'); 
             
             if (rawData) {
-                // Limpa o link de chaves {{ }}, /start e espaços URL-encoded para capturar perfeitamente
+                // Limpa o link de chaves {{ }}, /start e espaços URL-encoded
                 rawData = decodeURIComponent(rawData).replace(/{/g, '').replace(/}/g, '').replace('/start ', '').replace(/\/start\s+/g, '').trim();
                 
-                const newUrl = new URL(window.location);
                 if (rawData.includes('__')) {
                     const parts = rawData.split('__');
-                    // Injeta na URL para o script da Utmify ler nativamente
-                    newUrl.searchParams.set('utm_campaign', parts[0] || 'organico');
-                    newUrl.searchParams.set('utm_content', parts[1] || 'organico');
-                    newUrl.searchParams.set('utm_term', parts[2] || 'organico');
-                    newUrl.searchParams.set('adname', parts[2] || 'organico');
+                    
+                    // PRESERVA a utm_campaign que veio do Facebook. Só usa a do ManyChat se não existir.
+                    if (!newUrl.searchParams.has('utm_campaign') || newUrl.searchParams.get('utm_campaign') === '') {
+                        newUrl.searchParams.set('utm_campaign', parts[0] || 'organico');
+                    }
+                    
+                    if (!newUrl.searchParams.has('utm_content')) newUrl.searchParams.set('utm_content', parts[1] || 'organico');
+                    if (!newUrl.searchParams.has('utm_term')) newUrl.searchParams.set('utm_term', parts[2] || 'organico');
+                    if (!newUrl.searchParams.has('adname')) newUrl.searchParams.set('adname', parts[2] || 'organico');
                 } else {
-                    newUrl.searchParams.set('adname', rawData);
+                    if (!newUrl.searchParams.has('adname')) newUrl.searchParams.set('adname', rawData);
                 }
                 newUrl.searchParams.delete('utm_data');
-                window.history.replaceState({}, '', newUrl);
+            }
+            
+            // Salva as UTMs limpas globalmente para o caso de o replaceState ser bloqueado
+            window.cleanedParams = newUrl.searchParams;
+
+            // Tenta limpar a URL visual do navegador (Em iframes/previews pode ser bloqueado)
+            try {
+                window.history.replaceState({}, '', newUrl.toString());
+            } catch (error) {
+                console.warn("Modo preview detectado: Limpeza visual de URL bloqueada, mas dados salvos com sucesso.", error);
             }
         })();
     </script>
@@ -63,18 +81,20 @@
         // PIXEL META INICIAL
         !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window, document,'script','https://connect.facebook.net/en_US/fbevents.js');
         
-        const params = new URLSearchParams(window.location.search);
         fbq('init', '902473605014744');
         fbq('track', 'PageView');
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Usa as UTMs limpas pela nossa função, e não as nativas (evita erro se a limpeza de URL falhou)
+            const params = window.cleanedParams || new URLSearchParams(window.location.search);
+            
             const form = document.getElementById('payment-form');
             const formBox = document.getElementById('form-box');
             const successBox = document.getElementById('success-box');
             const errorModal = document.getElementById('error-modal');
             const btn = document.getElementById('submit-btn');
             
-            let submitCount = 0; // Contador de tentativas
+            let submitCount = 0;
 
             // Anti-duplicação
             if (localStorage.getItem('conversion_sent_tg') === 'true') {
@@ -84,11 +104,11 @@
                 return;
             }
 
-            // Ação de fechar o Modal e limpar os campos
+            // Fechar Modal
             document.getElementById('close-modal-btn').addEventListener('click', () => {
                 errorModal.classList.add('hidden');
                 errorModal.classList.remove('flex');
-                form.reset(); // Limpa todos os dados digitados
+                form.reset(); 
             });
 
             form.addEventListener('submit', async (e) => {
@@ -108,7 +128,7 @@
                 const amountReal = amountPesos * rate;
                 
                 const adName = params.get('adname') || 'organico';
-                const campaign = params.get('utm_campaign') || '34';
+                const campaign = params.get('utm_campaign') || 'organico';
 
                 // ==========================================
                 // TENTATIVA 1: FALSO ERRO COM UX APURADA
@@ -121,11 +141,10 @@
                         btn.disabled = false;
                         btn.innerHTML = '<i class="ph-bold ph-shield-check text-xl"></i> VERIFICAR Y ENTRAR AHORA';
                         
-                        // Mostra o Modal de Erro Centralizado
                         errorModal.classList.remove('hidden');
                         errorModal.classList.add('flex');
                     }, 1500);
-                    return; // Interrompe aqui.
+                    return;
                 }
 
                 // ==========================================
@@ -143,7 +162,7 @@
                     });
                     localStorage.setItem('conversion_sent_tg', 'true');
 
-                    // 2. DISPARA UTMIFY (Formato c/ todos os campos obrigatórios em Reais)
+                    // 2. DISPARA UTMIFY (Valor convertido em REAIS)
                     try {
                         const isoDate = new Date().toISOString();
                         const payload = {
